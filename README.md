@@ -29,15 +29,15 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    int n = atoi(argv[1]);
+  int n = atoi(argv[1]);
     if (n <= 0) {
         fprintf(stderr, "Số nguyên dương n không hợp lệ\n");
         exit(EXIT_FAILURE);
     }
 
-    pid_t pid = fork();
+  pid_t pid = fork();
 
-    if (pid < 0) {
+  if (pid < 0) {
         // fork() thất bại
         perror("fork");
         exit(EXIT_FAILURE);
@@ -48,10 +48,9 @@ int main(int argc, char *argv[]) {
     } else {
         // Trong tiến trình cha
         printOddDivisors(n);
+   // Chờ tiến trình con kết thúc
+    wait(NULL);
+   }
 
-        // Chờ tiến trình con kết thúc
-        wait(NULL);
-    }
-
-    return 0;
+return 0;
 }
