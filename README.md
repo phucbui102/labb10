@@ -1,2 +1,31 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
-Khi loại bỏ dòng exit(0) ở dòng 5b, tiến trình con không kết thúc ngay lập tức sau khi gán giá trị mới cho biến num_coconuts. Thay vào đó, tiến trình con tiếp tục thực hiện các lệnh tiếp theo trong phạm vi của tiến trình con, bao gồm cả việc in ra giá trị của biến num_coconuts
+void createProcess(char parent, char child) {
+    pid_t pid = fork();
+    if (pid < 0) {
+        perror("fork");
+        exit(EXIT_FAILURE);
+    } else if (pid == 0) {
+        // Trong tiến trình con
+        printf("Process %c PID: %d\n", child, getpid());
+        printf("Parent of Process %c PID: %d\n", child, getppid());
+    } else {
+        // Trong tiến trình cha
+        wait(NULL); // Đợi cho đến khi tiến trình con kết thúc
+    }
+}
+
+int main() {
+    createProcess('A', 'B');
+    createProcess('A', 'C');
+    createProcess('B', 'E');
+    createProcess('B', 'D');
+    createProcess('C', 'H');
+    createProcess('D', 'I');
+    createProcess('D', 'J');
+    return 0;
+}
