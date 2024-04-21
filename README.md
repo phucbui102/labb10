@@ -3,32 +3,37 @@
 #include <unistd.h>
 #include <sys/wait.h>
 
-// Hàm tính tổng các số chia hết cho 3 trong khoảng từ 1 đến n
-int sumDivisibleBy3(int n) {
-    int sum = 0;
+void printOddDivisors(int n) {
+    printf("Tiến trình cha (PID: %d): Các ước số lẻ của %d: ", getpid(), n);
     for (int i = 1; i <= n; i++) {
-        if (i % 3 == 0) {
-            sum += i;
+        if (n % i == 0 && i % 2 != 0) {
+            printf("%d ", i);
         }
     }
-    return sum;
+    printf("\n");
 }
 
-// Hàm tính tổng các số chia hết cho 5 trong khoảng từ 1 đến n
-int sumDivisibleBy5(int n) {
-    int sum = 0;
+void printEvenDivisors(int n) {
+    printf("Tiến trình con (PID: %d): Các ước số chẵn của %d: ", getpid(), n);
     for (int i = 1; i <= n; i++) {
-        if (i % 5 == 0) {
-            sum += i;
+        if (n % i == 0 && i % 2 == 0) {
+            printf("%d ", i);
         }
     }
-    return sum;
+    printf("\n");
 }
 
-int main() {
-    int n;
-    printf("Nhap vao so nguyen duong n: ");
-    scanf("%d", &n);
+int main(int argc, char *argv[]) {
+    if (argc != 2) {
+        fprintf(stderr, "Sử dụng: %s <số_nguyên_dương_n>\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    int n = atoi(argv[1]);
+    if (n <= 0) {
+        fprintf(stderr, "Số nguyên dương n không hợp lệ\n");
+        exit(EXIT_FAILURE);
+    }
 
     pid_t pid = fork();
 
@@ -38,14 +43,12 @@ int main() {
         exit(EXIT_FAILURE);
     } else if (pid == 0) {
         // Trong tiến trình con
-        int sum_5 = sumDivisibleBy5(n);
-        printf("Tong cac so chia het cho 5 tu 1 den %d: %d\n", n, sum_5);
+        printEvenDivisors(n);
         exit(EXIT_SUCCESS);
     } else {
         // Trong tiến trình cha
-        int sum_3 = sumDivisibleBy3(n);
-        printf("Tong cac so chia het cho 3 tu 1 den %d: %d\n", n, sum_3);
-        
+        printOddDivisors(n);
+
         // Chờ tiến trình con kết thúc
         wait(NULL);
     }
