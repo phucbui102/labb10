@@ -1,78 +1,82 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <pthread.h>
 #include <semaphore.h>
 
-#define NUM_TIRE 4
+sem_t chassis_semaphore;    // Semaphore cho việc sản xuất khung xe
+sem_t tire_semaphore;       // Semaphore cho việc sản xuất bánh xe
+sem_t assemble_semaphore;   // Semaphore cho việc lắp ráp
+int tire_count = 0;         // Đếm số lượng bánh xe đã sản xuất
 
-sem_t chassis_semaphore; // Semaphore cho khung xe
-sem_t tire_semaphore;    // Semaphore cho bánh xe
-
-// Hàm sản xuất khung xe
 void Produce_chassis() {
+    // Sản xuất khung xe
     printf("Producing chassis...\n");
 }
 
-// Hàm sản xuất bánh xe
 void Produce_tire() {
+    // Sản xuất bánh xe
     printf("Producing tire...\n");
+    tire_count++;
 }
 
-// Hàm lắp ráp bánh xe vào khung xe
 void Put_4_tires_to_chassis() {
+    // Lắp 4 bánh xe vào khung xe
     printf("Assembling tires to chassis...\n");
+    tire_count -= 4;
 }
 
-// Thread cho bộ phận sản xuất khung xe
-void* makeChassis(void* arg) {
+void *makeChassis(void *arg) {
     while (1) {
-        sem_wait(&chassis_semaphore); // Đợi có sẵn một khung xe trống
-        Produce_chassis(); // Sản xuất khung xe
-        for (int i = 0; i < NUM_TIRE; ++i) {
-            sem_post(&tire_semaphore); // Báo hiệu rằng có sẵn một bánh xe để lắp vào khung xe mới
+        sem_wait(&chassis_semaphore);  // Chờ đến khi được phép sản xuất khung xe
+        Produce_chassis();
+        sem_post(&tire_semaphore);     // Bắt đầu sản xuất 4 bánh xe sau khi có khung xe
+    }
+}
+
+void *MakeTire(void *arg) {
+    while (1) {
+        Produce_tire();
+        if (tire_count >= 4) {
+            sem_post(&assemble_semaphore);  // Báo hiệu rằng đã có đủ bánh xe để lắp ráp
+            sem_post(&assemble_semaphore);
+            sem_post(&assemble_semaphore);
+            sem_post(&assemble_semaphore);
         }
     }
-    return NULL;
 }
 
-// Thread cho bộ phận sản xuất bánh xe
-void* makeTire(void* arg) {
+void *assemble(void *arg) {
     while (1) {
-        Produce_tire(); // Sản xuất bánh xe
-        sem_wait(&tire_semaphore); // Đợi có sẵn một bánh xe để lắp vào khung xe
+        sem_wait(&assemble_semaphore);  // Chờ đến khi có đủ bánh xe để lắp ráp
+        sem_wait(&assemble_semaphore);
+        sem_wait(&assemble_semaphore);
+        sem_wait(&assemble_semaphore);
+        Put_4_tires_to_chassis();
+        sem_post(&chassis_semaphore);   // Báo hiệu rằng đã lắp ráp xong và có thể sản xuất khung xe tiếp theo
     }
-    return NULL;
-}
-
-// Thread cho bộ phận lắp ráp
-void* assemble(void* arg) {
-    while (1) {
-        Put_4_tires_to_chassis(); // Lắp ráp bánh xe vào khung xe
-        sem_post(&chassis_semaphore); // Báo hiệu rằng một khung xe đã được lắp ráp xong, cho phép sản xuất khung xe mới
-    }
-    return NULL;
 }
 
 int main() {
-    pthread_t thread_chassis, thread_tire, thread_assemble;
+    pthread_t chassis_thread, tire_thread, assemble_thread;
 
-// Khởi tạo semaphore
-    sem_init(&chassis_semaphore, 0, 1); // Ban đầu có một khung xe trống
-    sem_init(&tire_semaphore, 0, 0);    // Ban đầu không có bánh xe nào
+// Khởi tạo Semaphore
+    sem_init(&chassis_semaphore, 0, 1);
+    sem_init(&tire_semaphore, 0, 0);
+    sem_init(&assemble_semaphore, 0, 0);
 
- // Tạo các thread cho các bộ phận sản xuất khung xe, sản xuất bánh xe và lắp ráp
-    pthread_create(&thread_chassis, NULL, makeChassis, NULL);
-    pthread_create(&thread_tire, NULL, makeTire, NULL);
-    pthread_create(&thread_assemble, NULL, assemble, NULL);
+// Tạo các luồng
+    pthread_create(&chassis_thread, NULL, makeChassis, NULL);
+    pthread_create(&tire_thread, NULL, MakeTire, NULL);
+    pthread_create(&assemble_thread, NULL, assemble, NULL);
 
-// Chờ các thread kết thúc (Điều này không xảy ra trong thực tế, ở đây chỉ là để biểu diễn)
-    pthread_join(thread_chassis, NULL);
-    pthread_join(thread_tire, NULL);
-    pthread_join(thread_assemble, NULL);
+// Chờ các luồng kết thúc (điều này không xảy ra trong trường hợp này)
+    pthread_join(chassis_thread, NULL);
+    pthread_join(tire_thread, NULL);
+    pthread_join(assemble_thread, NULL);
 
-// Hủy semaphore
+// Hủy Semaphore
     sem_destroy(&chassis_semaphore);
     sem_destroy(&tire_semaphore);
+    sem_destroy(&assemble_semaphore);
 
- return 0;
+return 0;
 }
