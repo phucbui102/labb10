@@ -1,70 +1,88 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <semaphore.h>
 
-#define ARRAY_SIZE 10
+sem_t chassis_semaphore; // Semaphore cho khung xe
+sem_t tire_semaphore;    // Semaphore cho bánh xe
 
-pthread_mutex_t mutex; // Khai báo biến mutex
-int x[ARRAY_SIZE] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}; // Mảng số nguyên
-int sumB = 0, sumC = 0, sumD = 0; // Biến tổng
+// Bộ phận sản xuất khung xe
+void Produce_chassis() {
+    // Sản xuất khung xe
+    printf("Producing chassis...\n");
+    // Giả sử quá trình sản xuất mất một thời gian
+    // Đợi một khoảng thời gian ngắn để mô phỏng quá trình sản xuất
+    sleep(1);
+}
 
-// Hàm tính tổng các số chẵn trong mảng x
-void* calculate_even_sum(void* arg) {
-    for (int i = 0; i < ARRAY_SIZE; i++) {
-        if (x[i] % 2 == 0) {
-            pthread_mutex_lock(&mutex); // Khóa mutex trước khi thay đổi biến sumB
-            sumB += x[i];
-            pthread_mutex_unlock(&mutex); // Mở khóa mutex sau khi hoàn thành thay đổi
-        }
+// Bộ phận sản xuất bánh xe
+void Produce_tire() {
+    // Sản xuất bánh xe
+    printf("Producing tire...\n");
+    // Giả sử quá trình sản xuất mất một thời gian
+    // Đợi một khoảng thời gian ngắn để mô phỏng quá trình sản xuất
+    sleep(1);
+}
+
+// Bộ phận lắp ráp
+void Put_4_tires_to_chassis() {
+    // Lắp ráp bánh xe vào khung xe
+    printf("Assembling tires to chassis...\n");
+    // Giả sử quá trình lắp ráp mất một thời gian
+    // Đợi một khoảng thời gian ngắn để mô phỏng quá trình lắp ráp
+    sleep(1);
+}
+
+// Bộ phận sản xuất khung xe
+void* makeChassis(void* arg) {
+    while (1) {
+        sem_wait(&chassis_semaphore); // Chờ có sẵn một khoảng trống để sản xuất khung xe
+        Produce_chassis(); // Sản xuất khung xe
+        sem_post(&tire_semaphore); // Báo hiệu rằng một khung xe đã được sản xuất, cho phép sản xuất bánh xe tiếp theo
     }
     return NULL;
 }
 
-// Hàm tính tổng các số lẻ trong mảng x
-void* calculate_odd_sum(void* arg) {
-    for (int i = 0; i < ARRAY_SIZE; i++) {
-        if (x[i] % 2 != 0) {
-            pthread_mutex_lock(&mutex); // Khóa mutex trước khi thay đổi biến sumC
-            sumC += x[i];
-            pthread_mutex_unlock(&mutex); // Mở khóa mutex sau khi hoàn thành thay đổi
-        }
+// Bộ phận sản xuất bánh xe
+void* MakeTire(void* arg) {
+    while (1) {
+        sem_wait(&tire_semaphore); // Chờ có sẵn đủ bánh xe để lắp vào khung xe
+        Produce_tire(); // Sản xuất bánh xe
+        sem_post(&tire_semaphore); // Báo hiệu rằng một bánh xe đã được sản xuất
+        sem_post(&chassis_semaphore); // Báo hiệu rằng một bánh xe đã được sản xuất, cho phép sản xuất khung xe tiếp theo
     }
     return NULL;
 }
 
-// Hàm tính tổng sumD dựa trên sumB và sumC
-void* calculate_total_sum(void* arg) {
-    pthread_mutex_lock(&mutex); // Khóa mutex trước khi tính toán sumD
-    sumD = sumB + sumC;
-    pthread_mutex_unlock(&mutex); // Mở khóa mutex sau khi hoàn thành tính toán
+// Bộ phận lắp ráp
+void* Asemble(void* arg) {
+    while (1) {
+        sem_wait(&tire_semaphore); // Chờ có sẵn đủ bánh xe để lắp vào khung xe
+        Put_4_tires_to_chassis(); // Lắp ráp bánh xe vào khung xe
+    }
     return NULL;
 }
 
 int main() {
-    pthread_t threadB, threadC, threadD;
+    pthread_t thread_chassis, thread_tire, thread_assemble;
 
-pthread_mutex_init(&mutex, NULL); // Khởi tạo mutex
+// Khởi tạo semaphore
+    sem_init(&chassis_semaphore, 0, 1); // Khởi tạo với giá trị ban đầu là 1 (một khung xe có thể được sản xuất ngay lập tức)
+    sem_init(&tire_semaphore, 0, 0);    // Khởi tạo với giá trị ban đầu là 0 (không có bánh xe nào có sẵn để lắp vào khung xe)
 
- // Tạo các thread cho các công việc
-    pthread_create(&threadB, NULL, calculate_even_sum, NULL);
-    pthread_create(&threadC, NULL, calculate_odd_sum, NULL);
+// Tạo các thread cho các bộ phận sản xuất khung xe, sản xuất bánh xe và lắp ráp
+    pthread_create(&thread_chassis, NULL, makeChassis, NULL);
+    pthread_create(&thread_tire, NULL, MakeTire, NULL);
+    pthread_create(&thread_assemble, NULL, Asemble, NULL);
 
-// Chờ các thread B và C kết thúc
-    pthread_join(threadB, NULL);
-    pthread_join(threadC, NULL);
+// Chờ các thread kết thúc (Điều này không xảy ra trong thực tế, ở đây chỉ là để biểu diễn)
+    pthread_join(thread_chassis, NULL);
+    pthread_join(thread_tire, NULL);
+    pthread_join(thread_assemble, NULL);
 
-// Tạo thread D để tính tổng sumD
-    pthread_create(&threadD, NULL, calculate_total_sum, NULL);
-
-// Chờ thread D kết thúc
-    pthread_join(threadD, NULL);
-
-pthread_mutex_destroy(&mutex); // Hủy mutex
-
-// In ra kết quả
-    printf("Tong cac so chan trong mang: %d\n", sumB);
-    printf("Tong cac so le trong mang: %d\n", sumC);
-    printf("Tong cac phan tu trong mang: %d\n", sumD);
+// Hủy semaphore
+    sem_destroy(&chassis_semaphore);
+    sem_destroy(&tire_semaphore);
 
  return 0;
 }
